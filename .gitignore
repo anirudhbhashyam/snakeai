@@ -1,0 +1,5 @@
+raylib
+*.dSYM
+*.ipynb
+main
+.vscode
