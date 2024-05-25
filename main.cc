@@ -257,35 +257,52 @@ struct Snake {
 };
 
 
+struct Game {
+    public:
+        Game() {
+            InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "SNAKERL");
+        }
+
+        void run() {
+            while (!WindowShouldClose()) {
+                SetTargetFPS(fps);
+
+                BeginDrawing();
+
+                    ClearBackground(BACKGROUND_COLOR);
+
+                    snake.move();
+                    snake.eat(food);
+
+                    snake.draw();
+                    food.draw();
+                    score = std::to_string(snake.get_length() - 1);
+                    DrawText(score.c_str(), 10, 10, 30, WHITE);
+
+                EndDrawing();
+            }
+        }
+        ~Game() {
+            CloseWindow();
+        }
+    private:
+        uint16_t fps{ FPS };
+
+        Snake snake{ 
+            Vec2{ 100.0f, 100.0f },
+            SNAKE_SIZE
+        };
+
+        Food food{
+            Vec2{ 200.0f, 200.0f }
+        };
+
+        std::string score{ };
+};
+
 int32_t main() {
     SetTraceLogLevel(LOG_ERROR);
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "SNAKERL");
-
-    Snake snake{ 
-        Vec2{ 100.0f, 100.0f },
-        SNAKE_SIZE
-    };
-
-    Food food{
-        Vec2{ 200.0f, 200.0f }
-    };
-
-    while (!WindowShouldClose()) {
-        SetTargetFPS(FPS);
-
-        BeginDrawing();
-
-            ClearBackground(BACKGROUND_COLOR);
-
-            snake.move();
-            snake.eat(food);
-
-            snake.draw();
-            food.draw();
-            DrawText(std::to_string(snake.get_length() - 1).c_str(), 10, 10, 30, WHITE);
-
-        EndDrawing();
-    }
-    CloseWindow();
+    Game game{ };
+    game.run();
     return 0;
 }
