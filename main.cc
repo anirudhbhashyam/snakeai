@@ -1,10 +1,13 @@
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <print>
+
 #include <random>
 #include <ranges>
 #include <raylib.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 std::random_device rd;
@@ -38,6 +41,18 @@ enum Direction {
     LEFT,
     RIGHT,
     NO_DIRECTION
+};
+
+enum GameState {
+    START = 0,
+    RUNNING,
+    END,
+    PAUSE,
+};
+struct GameStateHash {
+    size_t operator()(auto t) const {
+        return static_cast<int32_t>(t);
+    }
 };
 
 template <typename T>
@@ -256,6 +271,60 @@ struct Snake {
         Direction dir{ NO_DIRECTION };
 };
 
+struct Level {
+    public:
+        Level() = default;
+        virtual ~Level() = default;
+        virtual void render() = 0;
+        virtual void update(GameState*) = 0;
+};
+
+struct StartLevel : public Level {
+    public:
+        StartLevel() = default;
+        void render() override {
+            ClearBackground(BACKGROUND_COLOR);
+            DrawText(
+                "Play",
+                GetScreenWidth() / 2,
+                GetScreenHeight() / 2,
+                50,
+                WHITE
+            );
+        }
+        void update(GameState* state) override {
+            if (IsKeyPressed(KEY_SPACE)) {
+                *state = RUNNING;
+            }
+        }
+};
+
+struct RunningLevel : public Level {
+    public:
+        RunningLevel() = default;
+
+        void render() override {
+            ClearBackground(BACKGROUND_COLOR);
+            snake.draw();
+            food.draw();
+        }
+
+        void update(GameState* state) override {
+            snake.move();
+            snake.eat(food);
+            (void) state;
+        }
+
+    private:
+        Snake snake{
+            Vec2<float> { 100, 100 },
+            SNAKE_SIZE
+        };
+
+        Food food{
+            Vec2<float> { 300, 300 }
+        };
+};
 
 struct Game {
     public:
@@ -263,41 +332,44 @@ struct Game {
             InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "SNAKERL");
         }
 
+        ~Game() {
+            CloseWindow();
+        }
+
         void run() {
             while (!WindowShouldClose()) {
                 SetTargetFPS(fps);
 
+                level_cache[state]->update(&state);
+
                 BeginDrawing();
+                    level_cache[state]->render();
 
-                    ClearBackground(BACKGROUND_COLOR);
-
-                    snake.move();
-                    snake.eat(food);
-
-                    snake.draw();
-                    food.draw();
-                    score = std::to_string(snake.get_length() - 1);
-                    DrawText(score.c_str(), 10, 10, 30, WHITE);
+                    // update_score();
+                    // DrawText(score.c_str(), 10, 10, 30, WHITE);
 
                 EndDrawing();
             }
         }
-        ~Game() {
-            CloseWindow();
-        }
+
+        // void update_score() {
+        //     score = std::to_string(snake.get_length() - 1);
+        // }
+
     private:
+        GameState state{ START };
+
         uint16_t fps{ FPS };
 
-        Snake snake{ 
-            Vec2{ 100.0f, 100.0f },
-            SNAKE_SIZE
-        };
-
-        Food food{
-            Vec2{ 200.0f, 200.0f }
-        };
-
         std::string score{ };
+
+        std::unordered_map<
+            GameState,
+            std::shared_ptr<Level>
+        > level_cache{
+           { START, std::make_shared<StartLevel>() },
+           { RUNNING, std::make_shared<RunningLevel>() }
+        };
 };
 
 int32_t main() {
